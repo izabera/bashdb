@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+# bash lacks data structures and cannot store arbitrary data in variables
+# everything will be encoded in base64 with no newlines
+
+# example
+# the actual file won't be indented
+
+# db begin
+#   dbname: encoded-base64-string
+#   table begin
+#     tablename: encoded...
+#     definitions start
+#       fieldname1: ...
+#       fieldname2: ...
+#       fieldname3: ...
+#       fieldname4: ...
+#     definitions end
+#     records begin
+#       record begin
+#         field1: ...
+#         field2: ...
+#         field3: ...
+#         field4: ...
+#       record end
+#       record begin
+#         field1: ...
+#         field2: ...
+#         field3: ...
+#         field4: ...
+#       record end
+#     records end
+#   table end
+#   table begin
+#     tablename: ...
+#       ...
+#   table end
+# db end
+
+# locking is hard
+# only one user can edit the database at a time, but it's better than nothing
+# with noclobber
+
+write () {
+  # $1 = SQL-ish statement
+  set -o noclobber
+  available=true
+  until ! echo "$$" > "${db_id}.lock" 2> /dev/null; do
+    $available || continue
+    echo "File locked, waiting"
+    available=false
+  done
+  dostuff
+}
+
+
+# 
+
+
+
