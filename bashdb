@@ -1,64 +1,61 @@
 #!/usr/bin/env bash
 
-# bash lacks data structures and cannot store arbitrary data in variables
-# everything will be encoded in base64 with no newlines
 
-# example
-# filesystem-like structure
-# advantages: simpler and better locking, it's possible to symlink(?)
-# disadvantages: looks stupid, lots of metadata
+getlock () {
+  # $1 = db
+  # $2 = table
+  # $3 = record
 
-# dbid/
-#   name: encoded-base64-string
-#   table begin
-#     tablename: encoded...
-#     definitions start
-#       fieldname1: ...
-#       fieldname2: ...
-#       fieldname3: ...
-#       fieldname4: ...
-#     definitions end
-#     records begin
-#       record begin
-#         field1: ...
-#         field2: ...
-#         field3: ...
-#         field4: ...
-#       record end
-#       record begin
-#         field1: ...
-#         field2: ...
-#         field3: ...
-#         field4: ...
-#       record end
-#     records end
-#   table end
-#   table begin
-#     tablename: ...
-#       ...
-#   table end
-# db end
+  if [[ $3 ]] ; then
+    # don't add the lock suffix to simplify the parameter expansion later
+    # in case we need to get the lock for subfolders
+    lock=db.$1/table.$2/records/record.$3/
+  else
+    lock=db.$1/table.$2/records/
+  fi
 
-# locking is hard
-# only one user can edit the database at a time, but it's better than nothing
-# with noclobber
+  locked=false
 
-write () {
-  # $1 = SQL-ish statement
-  set -o noclobber
-  local printed=false
-  until (echo "$$" > "${db_id}-${table_id}-${record_id}.lock") 2> /dev/null; do
-    $printed && continue
-    echo "Database locked, waiting"
-    printed=true
+  until mkdir "$lock/lock" 2> /dev/null; do
+    $locked && continue
+    echo "Record locked by $(< "$lock/lock/pid"), waiting" >&2
+    locked=true
   done
-  trap 'rm -f "${db_id}.lock"' EXIT
-  dostuff
-  trap - EXIT
+
+  # lock all the records
+  if [[ ! $3 ]] ; then
+    for file in "$lock"* ; do
+      getlock "$1" "$2" "${file#"$lock"}"
+    done
+  fi
+
+  echo $$ > "$lock/lock/pid"
 }
 
 
-# 
+releaselock () {
+  if [[ $3 ]] ; then
+    lock=db.$1/table.$2/records/record.$3/
+  else
+    lock=db.$1/table.$2/records/
+  fi
+  rm -rf "$lock/lock"
+}
+
+
+
+write () {
+  # $1 = db
+  # $2 = table
+  # $3 = record
+  # $4 = sql statement reduced to a single record
+}
+
+
+
+parsesql () {
+  aklsdfa
+}
 
 
 
