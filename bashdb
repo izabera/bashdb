@@ -4,10 +4,12 @@
 # everything will be encoded in base64 with no newlines
 
 # example
-# the actual file won't be indented
+# filesystem-like structure
+# advantages: simpler and better locking, it's possible to symlink(?)
+# disadvantages: looks stupid, lots of metadata
 
-# db begin
-#   dbname: encoded-base64-string
+# dbid/
+#   name: encoded-base64-string
 #   table begin
 #     tablename: encoded...
 #     definitions start
@@ -44,13 +46,15 @@
 write () {
   # $1 = SQL-ish statement
   set -o noclobber
-  available=true
-  until ! echo "$$" > "${db_id}.lock" 2> /dev/null; do
-    $available || continue
-    echo "File locked, waiting"
-    available=false
+  local printed=false
+  until (echo "$$" > "${db_id}-${table_id}-${record_id}.lock") 2> /dev/null; do
+    $printed && continue
+    echo "Database locked, waiting"
+    printed=true
   done
+  trap 'rm -f "${db_id}.lock"' EXIT
   dostuff
+  trap - EXIT
 }
 
 
